@@ -3,17 +3,19 @@ LabMate AI - Backend API
 A STEM student assistant for lab reports, research papers, and video resources
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import os
 from datetime import datetime
 import json
+import io
 
 # Import our modules
 from ai_service import AIService
 from video_service import VideoService
 from research_service import ResearchService
 from report_generator import ReportGenerator
+from pdf_generator import PDFGenerator
 
 app = Flask(__name__)
 CORS(app)  # Allow cross-origin requests from mobile app
@@ -23,6 +25,7 @@ ai_service = AIService()
 video_service = VideoService()
 research_service = ResearchService()
 report_generator = ReportGenerator(ai_service)
+pdf_generator = PDFGenerator()
 
 # Health check endpoint
 @app.route('/health', methods=['GET'])
@@ -95,6 +98,54 @@ def format_report():
             'success': True,
             'formatted_report': formatted
         })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/export-pdf', methods=['POST'])
+def export_pdf():
+    """
+    Export a lab report as a PDF file
+    
+    Request Body:
+    {
+        "report": {
+            "title": "Experiment Title",
+            "course_code": "CH 273",
+            "student_name": "John Doe",
+            "date": "2026-02-26",
+            "sections": {
+                "introduction": "...",
+                "theory": "...",
+                etc.
+            }
+        }
+    }
+    
+    Returns: PDF file for download
+    """
+    try:
+        data = request.json
+        report_data = data.get('report')
+        
+        if not report_data:
+            return jsonify({'error': 'Report data is required'}), 400
+        
+        # Generate PDF
+        pdf_bytes = pdf_generator.generate_lab_report_pdf(report_data)
+        
+        # Create filename
+        title = report_data.get('title', 'lab_report').replace(' ', '_')
+        filename = f"{title}.pdf"
+        
+        # Return PDF as downloadable file
+        return send_file(
+            io.BytesIO(pdf_bytes),
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
