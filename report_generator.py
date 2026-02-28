@@ -364,7 +364,7 @@ No new information - only summarize what was already discussed."""
     def _generate_references_template(self, course_code: str) -> str:
         """Generate REFERENCES section in Harvard style"""
         
-        return f"""Ahmad, S. et al., 'Analyzing total alkalinity in marine environments for ocean health monitoring', Marine Science Journal, 12(4), 2023, pp. 88–95.
+        refs = """Ahmad, S. et al., 'Analyzing total alkalinity in marine environments for ocean health monitoring', Marine Science Journal, 12(4), 2023, pp. 88–95.
 
 Berasarte, M. et al., 'Standardization and use of titrants', in Goyal, A. and Kumar, H. (eds.) Advanced Techniques of Analytical Chemistry. Vol. 1. Singapore: Bentham Science Publishers, 2024, pp. 100–115.
 
@@ -374,7 +374,7 @@ Gandhi, P. et al., Safety and Risk Management in Chemical Laboratories. 3rd edn.
 
 Korbag, I. et al., 'The importance of concentration in quantitative analysis', Journal of Chemical Education and Research, 5(1), 2022, pp. 12–18.
 
-Lab Manual for {course_code}, (Unpublished), University of Mines and Technology, 2026.
+Lab Manual for COURSE_CODE, (Unpublished), University of Mines and Technology, 2026.
 
 Mallick, T., Analytical Methods in Chemistry. 2nd edn. New Delhi: Tech Science Press, 2025.
 
@@ -389,6 +389,8 @@ Skoog, D.A. et al., Fundamentals of Analytical Chemistry. 10th edn. Boston, MA: 
 Varadarajan, S. et al., 'Calculations in solution chemistry: A student-centered approach', International Journal of Science and Math Education, 19(2), 2021, pp. 55–62.
 
 *Note: These are template references. Actual citations used in the report should be listed here in Harvard format, alphabetically ordered.*"""
+        
+        return refs.replace('COURSE_CODE', course_code)
     
     def format_raw_notes(self, raw_notes: str, report_type: str = "chemistry") -> Dict[str, str]:
         """

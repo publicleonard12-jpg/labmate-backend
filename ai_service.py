@@ -1,6 +1,6 @@
 """
 AI Service Module - Handles all AI/LLM interactions
-Supports both Claude API (primary) and Groq API (fallback)
+Uses Groq API for fast, affordable AI generation
 """
 
 import os
@@ -10,94 +10,41 @@ from typing import List, Dict, Any
 
 class AIService:
     def __init__(self):
-        # Claude API (Anthropic) - Primary
-        self.claude_api_key = os.environ.get('ANTHROPIC_API_KEY', '')
-        self.claude_base_url = "https://api.anthropic.com/v1/messages"
-        self.claude_model = "claude-sonnet-4-20250514"  # Latest Sonnet
+        self.api_key = os.environ.get('GROQ_API_KEY', '')
+        self.base_url = "https://api.groq.com/openai/v1/chat/completions"
         
-        # Groq API - Fallback
-        self.groq_api_key = os.environ.get('GROQ_API_KEY', '')
-        self.groq_base_url = "https://api.groq.com/openai/v1/chat/completions"
-        self.groq_model = "llama-3.3-70b-versatile"
+        # Model selection (Groq offers multiple models)
+        self.model = "llama-3.3-70b-versatile"  # Fast and smart
+        # Alternative: "mixtral-8x7b-32768" for longer context
         
-        # Choose which API to use by default
-        self.use_claude = bool(self.claude_api_key)  # Use Claude if key is available
-    
     def _make_request(self, messages: List[Dict], temperature: float = 0.7, max_tokens: int = 2000) -> str:
-        """Make request to Claude API (primary) or Groq API (fallback)"""
-        
-        if self.use_claude and self.claude_api_key:
-            return self._make_claude_request(messages, temperature, max_tokens)
-        elif self.groq_api_key:
-            return self._make_groq_request(messages, temperature, max_tokens)
-        else:
-            return self._generate_mock_response(messages)
-    
-    def _make_claude_request(self, messages: List[Dict], temperature: float = 0.7, max_tokens: int = 2000) -> str:
-        """Make request to Claude API (Anthropic)"""
-        
-        headers = {
-            "x-api-key": self.claude_api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json"
-        }
-        
-        # Convert messages format from OpenAI to Claude format
-        system_messages = [m['content'] for m in messages if m['role'] == 'system']
-        system = "\n\n".join(system_messages) if system_messages else None
-        
-        # Get non-system messages
-        conversation = [m for m in messages if m['role'] != 'system']
-        
-        payload = {
-            "model": self.claude_model,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "messages": conversation
-        }
-        
-        if system:
-            payload["system"] = system
-        
-        try:
-            response = requests.post(self.claude_base_url, headers=headers, json=payload, timeout=60)
-            response.raise_for_status()
-            
-            data = response.json()
-            return data['content'][0]['text']
-            
-        except requests.exceptions.RequestException as e:
-            print(f"Claude API Error: {e}")
-            # Fallback to Groq if Claude fails
-            if self.groq_api_key:
-                print("Falling back to Groq API...")
-                return self._make_groq_request(messages, temperature, max_tokens)
-            return f"Error: {str(e)}"
-    
-    def _make_groq_request(self, messages: List[Dict], temperature: float = 0.7, max_tokens: int = 2000) -> str:
         """Make request to Groq API"""
         
+        if not self.api_key:
+            # Fallback for testing without API key
+            return self._generate_mock_response(messages)
+        
         headers = {
-            "Authorization": f"Bearer {self.groq_api_key}",
+            "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
         
         payload = {
-            "model": self.groq_model,
+            "model": self.model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
         
         try:
-            response = requests.post(self.groq_base_url, headers=headers, json=payload, timeout=30)
+            response = requests.post(self.base_url, headers=headers, json=payload, timeout=30)
             response.raise_for_status()
             
             data = response.json()
             return data['choices'][0]['message']['content']
             
         except requests.exceptions.RequestException as e:
-            print(f"Groq API Error: {e}")
+            print(f"API Error: {e}")
             return f"Error: {str(e)}"
     
     def _generate_mock_response(self, messages: List[Dict]) -> str:
