@@ -41,12 +41,17 @@ def health_check():
 @app.route('/api/generate-report', methods=['POST'])
 def generate_lab_report():
     """
-    Generate a complete lab report from experimental data
+    Generate a complete lab report from experimental data (UMAT format)
     
     Request Body:
     {
         "title": "Titration Experiment",
         "course_code": "CH 273",
+        "course_name": "Chemistry Laboratory Practice",
+        "student_name": "John Doe",
+        "student_id": "SPE.XX.XXX.XXX.XX",
+        "group_number": "10",
+        "lecturer": "Dr. Ami Johannes",
         "objective": "To determine the concentration...",
         "materials": ["Burette", "Pipette", "NaOH solution"],
         "procedure": "1. Fill burette with NaOH...",
@@ -146,6 +151,57 @@ def export_pdf():
             as_attachment=True,
             download_name=filename
         )
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/refine-section', methods=['POST'])
+def refine_section():
+    """
+    Refine a specific section of the report based on student's request
+    
+    Request Body:
+    {
+        "section_name": "introduction",
+        "current_content": "Current text of the section...",
+        "request": "Make it longer and add more citations",
+        "context": {
+            "title": "Experiment Title",
+            "course_code": "CH 273",
+            "objective": "The objective..."
+        }
+    }
+    
+    Returns: Refined section content
+    """
+    try:
+        data = request.json
+        
+        section_name = data.get('section_name')
+        current_content = data.get('current_content')
+        student_request = data.get('request')
+        context = data.get('context', {})
+        
+        if not all([section_name, current_content, student_request]):
+            return jsonify({
+                'error': 'section_name, current_content, and request are required'
+            }), 400
+        
+        # Refine the section
+        refined_content = report_generator.refine_section(
+            section_name,
+            current_content,
+            student_request,
+            context
+        )
+        
+        return jsonify({
+            'success': True,
+            'section_name': section_name,
+            'refined_content': refined_content,
+            'original_request': student_request
+        })
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
