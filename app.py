@@ -16,6 +16,7 @@ from video_service import VideoService
 from research_service import ResearchService
 from report_generator import ReportGenerator
 from pdf_generator import PDFGenerator
+from umat_docx_generator_module import UMATDocxGenerator
 
 app = Flask(__name__)
 CORS(app)  # Allow cross-origin requests from mobile app
@@ -26,6 +27,7 @@ video_service = VideoService()
 research_service = ResearchService()
 report_generator = ReportGenerator(ai_service)
 pdf_generator = PDFGenerator()
+umat_docx_generator = UMATDocxGenerator()
 
 # Health check endpoint
 @app.route('/health', methods=['GET'])
@@ -148,6 +150,61 @@ def export_pdf():
         return send_file(
             io.BytesIO(pdf_bytes),
             mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/export-docx', methods=['POST'])
+def export_docx():
+    """
+    Export a lab report as UMAT-formatted DOCX file
+    
+    Request Body:
+    {
+        "report": {
+            "title": "Experiment Title",
+            "course_code": "CH 273",
+            "student_name": "Leonard Essuman",
+            "student_id": "SPE.41.017.059.24",
+            "group_number": "10",
+            "lecturer": "Dr. Ami Johannes",
+            "course_name": "Chemistry Laboratory Practice",
+            "date": "2026-02-26",
+            "sections": {
+                "introduction": "...",
+                "materials": "...",
+                "procedure": "...",
+                "discussion": "...",
+                "conclusion": "...",
+                "references": "..."
+            }
+        }
+    }
+    
+    Returns: DOCX file for download in exact UMAT format
+    """
+    try:
+        data = request.json
+        report_data = data.get('report')
+        
+        if not report_data:
+            return jsonify({'error': 'Report data is required'}), 400
+        
+        # Generate DOCX
+        docx_bytes = umat_docx_generator.generate_lab_report_docx(report_data)
+        
+        # Create filename
+        title = report_data.get('title', 'lab_report').replace(' ', '_')
+        filename = f"{title}_UMAT.docx"
+        
+        # Return DOCX as downloadable file
+        return send_file(
+            io.BytesIO(docx_bytes),
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             as_attachment=True,
             download_name=filename
         )
