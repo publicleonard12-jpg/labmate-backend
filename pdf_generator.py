@@ -98,23 +98,63 @@ class PDFGenerator:
         # Add header
         story.extend(self._create_header(report_data))
         
-        # Add sections
+        # Add sections with chapter numbers
         sections = report_data.get('sections', {})
         
-        section_order = [
-            ('introduction', 'Introduction'),
-            ('theory', 'Theory and Background'),
-            ('materials', 'Materials and Equipment'),
-            ('procedure', 'Procedure'),
-            ('results', 'Results'),
-            ('discussion', 'Discussion'),
-            ('conclusion', 'Conclusion'),
-            ('references', 'References')
-        ]
+        # CHAPTER 1: Introduction
+        if 'introduction' in sections and sections['introduction']:
+            story.extend(self._create_section('INTRODUCTION', sections['introduction'], chapter_number=1))
         
-        for section_key, section_title in section_order:
-            if section_key in sections and sections[section_key]:
-                story.extend(self._create_section(section_title, sections[section_key]))
+        # Add theory to Chapter 1 if it exists
+        if 'theory' in sections and sections['theory']:
+            story.extend(self._create_section('THEORETICAL BACKGROUND', sections['theory']))
+        
+        # CHAPTER 2: Methodology
+        methodology_sections = []
+        if 'materials' in sections and sections['materials']:
+            methodology_sections.append(('Equipment/Materials', sections['materials']))
+        if 'procedure' in sections and sections['procedure']:
+            methodology_sections.append(('Procedure', sections['procedure']))
+        
+        if methodology_sections:
+            # Add Chapter 2 heading
+            story.append(PageBreak())
+            chapter_style = ParagraphStyle(
+                'ChapterHeading',
+                parent=self.styles['Heading1'],
+                fontSize=14,
+                fontName='Helvetica-Bold',
+                spaceAfter=12,
+                spaceBefore=24,
+                alignment=TA_CENTER
+            )
+            story.append(Paragraph("CHAPTER 2", chapter_style))
+            story.append(Paragraph("METHODOLOGY", self.styles['SectionHeading']))
+            story.append(Spacer(1, 0.2*inch))
+            
+            for section_title, content in methodology_sections:
+                story.extend(self._create_section(section_title, content))
+        
+        # CHAPTER 3: Data (if included)
+        if 'data' in sections and sections['data']:
+            story.append(PageBreak())
+            story.extend(self._create_section('DATA', sections['data'], chapter_number=3))
+        
+        # CHAPTER 4: Results and Discussion
+        if 'results' in sections and sections['results']:
+            story.append(PageBreak())
+            story.extend(self._create_section('RESULTS AND DISCUSSION', sections['results'], chapter_number=4))
+        
+        if 'discussion' in sections and sections['discussion']:
+            story.extend(self._create_section('', sections['discussion']))
+        
+        if 'conclusion' in sections and sections['conclusion']:
+            story.extend(self._create_section('Conclusion', sections['conclusion']))
+        
+        # References section
+        if 'references' in sections and sections['references']:
+            story.append(PageBreak())
+            story.extend(self._create_section('REFERENCES', sections['references']))
         
         # Build PDF
         doc.build(story)
@@ -126,44 +166,110 @@ class PDFGenerator:
         return pdf_bytes
     
     def _create_header(self, report_data: Dict) -> list:
-        """Create document header"""
+        """Create UMAT-style title page"""
         elements = []
         
-        # Title
-        title = report_data.get('title', 'Lab Report')
-        elements.append(Paragraph(title, self.styles['CustomTitle']))
+        # University header - centered
+        university_style = ParagraphStyle(
+            'UniversityHeader',
+            parent=self.styles['Normal'],
+            fontSize=12,
+            alignment=TA_CENTER,
+            spaceAfter=6,
+            fontName='Helvetica-Bold'
+        )
         
-        # Course code
-        course_code = report_data.get('course_code', '')
-        if course_code:
-            elements.append(Paragraph(course_code, self.styles['CourseCode']))
+        elements.append(Paragraph("UNIVERSITY OF MINES AND TECHNOLOGY, (UMAT).", university_style))
+        elements.append(Paragraph("TARKWA, GHANA.", university_style))
+        elements.append(Paragraph("SCHOOL OF PETROLEUM STUDIES.", university_style))
+        elements.append(Paragraph("DEPARTMENT OF CHEMICAL AND PETROCHEMICAL ENGINEERING", university_style))
+        elements.append(Spacer(1, 0.5*inch))
         
-        # Metadata table
-        metadata = [
-            ['Student:', report_data.get('student_name', '[Student Name]')],
-            ['Date:', report_data.get('date', datetime.now().strftime('%Y-%m-%d'))],
-        ]
+        # Title - centered, larger
+        title_style = ParagraphStyle(
+            'ReportTitle',
+            parent=self.styles['CustomTitle'],
+            fontSize=14,
+            alignment=TA_CENTER,
+            fontName='Helvetica-Bold',
+            spaceAfter=30
+        )
         
-        table = Table(metadata, colWidths=[1.5*inch, 4*inch])
-        table.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#666666')),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ]))
-        
-        elements.append(table)
+        title = report_data.get('title', 'Lab Report').upper()
+        elements.append(Paragraph(f"A REPORT ON {title}.", title_style))
         elements.append(Spacer(1, 0.3*inch))
+        
+        # Student info - centered
+        info_style = ParagraphStyle(
+            'StudentInfo',
+            parent=self.styles['Normal'],
+            fontSize=11,
+            alignment=TA_CENTER,
+            spaceAfter=8,
+            fontName='Helvetica'
+        )
+        
+        student_name = report_data.get('student_name', '[STUDENT NAME]').upper()
+        elements.append(Paragraph(f"BY: {student_name}.", info_style))
+        
+        student_id = report_data.get('student_id', '[STUDENT ID]')
+        elements.append(Paragraph(student_id, info_style))
+        
+        course_code = report_data.get('course_code', '')
+        elements.append(Paragraph(f"{course_code}.", info_style))
+        
+        group_number = report_data.get('group_number', '')
+        if group_number:
+            elements.append(Paragraph(f"GROUP {group_number}", info_style))
+        
+        course_name = report_data.get('course_name', 'CHEMISTRY LABORATORY PRACTICE').upper()
+        elements.append(Paragraph(course_name, info_style))
+        
+        lecturer = report_data.get('lecturer', '[COURSE LECTURER]').upper()
+        elements.append(Paragraph(f"COURSE LECTURER: {lecturer}.", info_style))
+        
+        # Date in UMAT format
+        date_str = report_data.get('date', datetime.now().strftime('%Y-%m-%d'))
+        try:
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+            day = date_obj.day
+            suffix = 'TH' if 11 <= day <= 13 else {1: 'ST', 2: 'ND', 3: 'RD'}.get(day % 10, 'TH')
+            formatted_date = date_obj.strftime(f'%d{suffix} %B, %Y').upper()
+        except:
+            formatted_date = date_str.upper()
+        
+        elements.append(Paragraph(formatted_date, info_style))
+        elements.append(PageBreak())
         
         return elements
     
-    def _create_section(self, title: str, content: str) -> list:
-        """Create a report section"""
+    def _create_section(self, title: str, content: str, chapter_number: int = None) -> list:
+        """Create a report section with optional chapter numbering"""
         elements = []
         
+        # Add chapter heading if provided
+        if chapter_number:
+            chapter_style = ParagraphStyle(
+                'ChapterHeading',
+                parent=self.styles['Heading1'],
+                fontSize=14,
+                fontName='Helvetica-Bold',
+                spaceAfter=12,
+                spaceBefore=24,
+                alignment=TA_CENTER
+            )
+            elements.append(Paragraph(f"CHAPTER {chapter_number}", chapter_style))
+        
         # Section heading
-        elements.append(Paragraph(title, self.styles['SectionHeading']))
+        section_style = ParagraphStyle(
+            'UMATSectionHeading',
+            parent=self.styles['SectionHeading'],
+            fontSize=12,
+            alignment=TA_CENTER if chapter_number else TA_LEFT,
+            fontName='Helvetica-Bold'
+        )
+        elements.append(Paragraph(title.upper(), section_style))
+        elements.append(Spacer(1, 0.2*inch))
         
         # Section content - split by paragraphs
         paragraphs = content.split('\n\n')
@@ -179,8 +285,7 @@ class PDFGenerator:
                     para_text = para.replace('\n', ' ')
                 
                 elements.append(Paragraph(para_text, self.styles['LabBodyText']))
-        
-        elements.append(Spacer(1, 0.2*inch))
+                elements.append(Spacer(1, 0.15*inch))
         
         return elements
     
