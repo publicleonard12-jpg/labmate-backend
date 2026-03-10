@@ -1,13 +1,10 @@
-Flask==3.0.0
+flask==3.0.0
 flask-cors==4.0.0
-requests==2.31.0
+groq==0.4.2
 python-dotenv==1.0.0
+requests==2.31.0
 reportlab==4.0.7
 python-docx==1.1.0
-
-# Optional but recommended
-gunicorn==21.2.0
-
-# For future enhancements (optional for MVP)
-# PyPDF2==3.0.1
-# youtube-transcript-api==0.6.1
+Pillow==10.1.0
+PyPDF2==3.0.1
+Werkzeug==3.0.1
